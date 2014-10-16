@@ -1,0 +1,13 @@
+{
+    "name": "veeam/cloudconnect",
+    "description": "Veeam RESTful Cloud Connect Demo",
+    "authors": [
+        {
+            "name": "Preben Berg",
+            "email": "preben.berg@veeam.com"
+        }
+    ],
+    "require": {
+            "guzzlehttp/guzzle": "~4.0"
+    }
+}
