@@ -22,7 +22,7 @@ class Veeam {
   private $backup_repository      = "cc-repo";
   
   // Cloud connect magic.
-  private $tenant_name            = 'default_username';
+  private $tenant_name            = "default-tenant-name"; // This should never happen. If so, you need to sanitize your input better.
   private $tenant_description     = "Veeam RESTful API demo - default description";
   private $tenant_resource_quota  = 102400;
   private $tenant_password;       // Will be randomized in __construct();
@@ -249,9 +249,6 @@ class Veeam {
     
     // Send output to web frontend
     $result = array('username' => $this->tenant_name, 'password' => $this->tenant_password, 'quota' => $this->tenant_resource_quota);
-    
-    // FIXME: deleting the tenant again for dev purposes
-    $this->client->delete('cloud/tenants/' . $tenant_id);
     
     return json_encode($result);
   }

@@ -9,7 +9,6 @@ require 'vendor/autoload.php';
 <html>
   <head>
     <title>Veeam RESTful demo</title>
-    <!--<script type="text/javascript" src="vendor/components/jquery/jquery.min.js"></script>-->
     <link rel="stylesheet" type="text/css" href="vendor/twbs/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" type="text/css" href="vendor/twbs/bootstrap/dist/css/bootstrap-theme.min.css" />
     <script type="text/javascript" src="components/jquery/jquery.min.js"></script>
