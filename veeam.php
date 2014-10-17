@@ -15,7 +15,7 @@ if (isset($_POST['action']) && $_POST['action'] == "create_tenant") {
   $username = strtolower($_POST['username']);
   $description = $_POST['full_name'] . " - " . $_POST['company_name'];
   
-  $veeam = new Veeam('10.0.0.7', 9399, 'VEEAM-VBR01\\Administrator', 'vP0wer12');
+  $veeam = new Veeam('10.0.0.7', 9399, 'VEEAM-VBR01\\Administrator', '***');
   
   // Create a user with 10 GB quota and leave them enabled.
   $veeam->run($username, $description, 10240, TRUE);  
