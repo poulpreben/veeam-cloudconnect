@@ -16,12 +16,19 @@ class Veeam {
   private $backup_server_id;
   private $backup_repository_urn;
   private $backup_repository_id;
+  private $hardware_plan_urn;
+  private $backup_create;
+  private $backup_resource;
+  private $replication_create;
+  private $replication_resource;
   
-  // Specify backup server name and repository too look for
-  private $backup_server          = "veeam-vbr01";
-  private $backup_repository      = "cc-repo";
-  
-  // Cloud connect magic.
+  // Specify default values
+  private $backup_server          = "vbr9.vclass.local";
+  private $backup_repository      = "Default Backup Repository";
+
+  private $hardware_plan          = "hwplan-default";
+  private $lease_expiration       = "+3 months"; // see http://php.net/manual/en/function.strtotime.php
+
   private $tenant_name            = "default-tenant-name"; // This should never happen. If so, you need to sanitize your input better.
   private $tenant_description     = "Veeam RESTful API demo - default description";
   private $tenant_resource_quota  = 102400;
@@ -33,7 +40,7 @@ class Veeam {
    * @param $username
    * @param $password
    */
-  public function __construct($host, $port, $username, $password) {
+  public function __construct($host, $port, $username, $password, $backup, $replication) {
     $this->client = new GuzzleHttp\Client(array(
       "base_url" => "http://" . $host . ":" . $port . "/api/",
       "defaults" => array(
@@ -47,7 +54,10 @@ class Veeam {
       )
     ));
 
-    $response = $this->client->post('sessionMngr/?v=v1_1');
+    $response = $this->client->post('sessionMngr/?v=v1_2');
+
+    $this->backup_create = $backup;
+    $this->replication_create = $replication;
 
     $this->session_id = $response->getHeader('X-RestSvcSessionId');
     $this->client->setDefaultOption('headers', array('X-RestSvcSessionId' => $this->session_id));
@@ -112,6 +122,18 @@ class Veeam {
     return "Not found!";
   }
 
+  private function veeam_get_hardware_plan($hardware_plan_name) {
+    $response = $this->client->get('cloud/hardwarePlans');
+
+    foreach ($response->xml()->Ref as $hardware_plan) {
+      if (strtolower($hardware_plan_name) == strtolower($hardware_plan['Name'])) {
+        if (array_pop(explode("/",$hardware_plan->Links->Link[0]['Href'])) == $this->backup_server_id) {
+          return (string) $hardware_plan['UID'];
+        }
+      }
+    }
+  }
+
   /**
    * @param $urn
    *
@@ -163,6 +185,26 @@ class Veeam {
   }
 
   /**
+  Function from http://stackoverflow.com/a/5965940
+  **/
+
+  private function array_to_xml( $data, $xml_data ) {
+    foreach( $data as $key => $value ) {
+      if( is_array($value)) {
+        if( is_numeric($key)) {
+          $key = 'item'.$key; //dealing with <0/>..<n/> issues
+        }
+        $subnode = $xml_data->addChild($key);
+        $this->array_to_xml($value, $subnode);
+      } else {
+        $xml_data->addChild("$key",htmlspecialchars("$value"));
+      }
+    }
+    
+    return $xml_data;
+  }
+
+  /**
    * @param $root
    * @param $type
    * @param $href
@@ -172,36 +214,25 @@ class Veeam {
    */
   private function create_xml($root, $type, $href, $content) {
     global $client;
-
+    
     $xml = new SimpleXmlElement('<' . $root . ' />');
-    $xml->addAttribute('Type', $type);
     $xml->addAttribute('xmlns', 'http://www.veeam.com/ent/v1.0');
     $xml->addAttribute('xmlns:xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
     $xml->addAttribute('Href', $this->client->getBaseUrl() . "{$href}");
-
-    $content = array_flip($content);
-    array_walk_recursive($content, array($xml, 'addChild'));
-
+    
+    $xml = $this->array_to_xml($content, $xml);
+    
     return $xml->asXml();
   }
 
   /**
-   * @param $xml_data
+   * @param string $tenant_name
+   * @param string $tenant_description
+   * @param int $tenant_resource_quota
+   * @param bool $enabled
+   * @return string $tenant_result JSON encoded
    */
   private function veeam_create_cloud_tenant($tenant_name = FALSE, $tenant_description = FALSE, $tenant_resource_quota = FALSE, $enabled = 0) {
-    // Override default values with input parameters if set
-    if (!empty($tenant_name)) {
-      $this->tenant_name = $tenant_name;
-    }
-    
-    if (!empty($tenant_description)) {
-      $this->tenant_description = $tenant_description;
-    }
-    
-    if (!empty($tenant_resource_quota)) {
-      $this->tenant_resource_quota = $tenant_resource_quota;
-    }
-    
     // Create tenant XML request
     // Refer to helpcenter.veeam.com for more information
     $url = 'cloud/tenants';
@@ -210,14 +241,21 @@ class Veeam {
       'CloudTenant',
       $url,
       array(
-        'BackupServerIdOrName'  => $this->backup_server_id,
-        'Name'                  => $this->tenant_name,
-        'Description'           => $this->tenant_description,
+        'Name'                  => $tenant_name,
+        'Description'           => $tenant_description,
         'Password'              => $this->tenant_password,
-        'Enabled'               => (int) $enabled
+        'Enabled'               => (int) $enabled,
+        'LeaseExpirationDate'   => date('c', strtotime($this->lease_expiration)),
+        'Resources'             => $this->backup_resource,
+        'ComputeResources'      => $this->replication_resource,
+        'ThrottlingEnabled'     => 'true',
+        'ThrottlingSpeedLimit'  => 1,
+        'ThrottlingSpeedUnit'   => 'MBps',
+        'PublicIpCount'         => 0,
+        'BackupServerUid'  => $this->backup_server_urn
       )
     );
-    
+
     // POST XML request to RESTful API
     $response = $this->client->post($url, array('body' => $xml_data, "headers" => array('Content-Type' => 'text/xml')));
 
@@ -225,35 +263,13 @@ class Veeam {
     $tenant_task_id = (string) $response->xml()->TaskId;
     $tenant_id = $this->veeam_task_subscriber($tenant_task_id, 'CloudTenant');
     
-    // Create tenant resource XML request
-    // Refer to helpcenter.veeam.com for more information
-    $url = 'cloud/tenants/' . $tenant_id . '/resources';
-    $xml_data = $this->create_xml(
-      'CreateCloudTenantResourceSpec',
-      'CloudTenant',
-      $url,
-      array(
-        'Name'          => 'cloud-' . $this->tenant_name . '-01',
-        'RepositoryUid' => $this->backup_repository_urn,
-        'QuotaMb'       => $this->tenant_resource_quota,
-        'Folder'        => '\\' . $this->tenant_name
-      )
-    );
-    
-    // POST XML request to RESTful API
-    $response = $this->client->post($url, array('body' => $xml_data, 'headers' => array('Content-Type' => 'text/xml')));
-    
-    // Wait for tenant resource task to finish    
-    $tenant_resource_task_id = (string) $response->xml()->TaskId;
-    $tenant_resource_id = $this->veeam_task_subscriber($tenant_resource_task_id, 'CloudTenantResource');
-    
     // Send output to web frontend
     $result = array('username' => $this->tenant_name, 'password' => $this->tenant_password, 'quota' => $this->tenant_resource_quota);
     
     return json_encode($result);
   }
 
-  /**
+   /**
    *
    */
   public function run($tenant_name, $tenant_description = "", $tenant_resource_quota = FALSE, $enabled = 0) {
@@ -261,8 +277,42 @@ class Veeam {
     $this->backup_server_urn = $this->veeam_get_backup_server($this->backup_server);
     $this->backup_server_id  = $this->veeam_get_id_from_urn($this->backup_server_urn);
 
-    $this->backup_repository_urn = $this->veeam_get_backup_repository($this->backup_server_id, $this->backup_repository);
-    $this->backup_repository_id  = $this->veeam_get_id_from_urn($this->backup_repository_urn);
+    // Override default values with input parameters if set
+    if (!empty($tenant_name)) {
+      $this->tenant_name = $tenant_name;
+    }
+
+    if (!empty($tenant_description)) {
+      $this->tenant_description = $tenant_description;
+    }
+
+    if (!empty($tenant_resource_quota)) {
+      $this->tenant_resource_quota = $tenant_resource_quota;
+    }
+
+    if ($this->backup_create) {
+      $this->backup_repository_urn = $this->veeam_get_backup_repository($this->backup_server_id, $this->backup_repository);
+      $this->backup_repository_id = $this->veeam_get_id_from_urn($this->backup_repository_urn);
+
+      $this->backup_resource = array(
+        'BackupResource' =>  array(
+          'Name'            => 'cloud-' . $this->tenant_name . '-01',
+          'RepositoryUid'   => $this->backup_repository_urn,
+          'QuotaMb'         => $this->tenant_resource_quota
+        )
+      );
+    }
+
+    if ($this->replication_create) {
+      $this->hardware_plan_urn = $this->veeam_get_hardware_plan($this->hardware_plan);
+      $this->replication_resource = array(
+        'ComputeResource' =>  array(
+          'CloudHardwarePlanUid'          => $this->hardware_plan_urn,
+          'PlatformType'                  => 'VMware',
+          'UseNetworkFailoverResources'   => 'false'
+        )
+      );
+    }
 
     echo $this->veeam_create_cloud_tenant($tenant_name, $tenant_description, $tenant_resource_quota, $enabled);
   }

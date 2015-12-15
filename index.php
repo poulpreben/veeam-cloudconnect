@@ -40,7 +40,7 @@ require 'vendor/autoload.php';
     <div class="row">
       <div class="col-sm-9">
         <p class="text-center"><img src="veeam_logo.png" align="center"/></p>
-        <p class="text-center lead"><b>RESTful API demo for Veeam Cloud Connect</b><br />Type in your information below to create Cloud Repository with 100 GB quota.</p>
+        <p class="text-center lead"><b>RESTful API demo for Veeam Cloud Connect</b><br />Type in your information below to instantly provision your Veeam Cloud Connect tenant</p>
         <div id="form_container">
           <form id="veeam_cloud_connect_form" method="POST" action="/veeam.php" role="form">
             <input type="hidden" name="action" value="create_tenant" />
@@ -56,11 +56,28 @@ require 'vendor/autoload.php';
               <label for="company_name">Company name</label>
               <input type="text" name="company_name" class="form-control" placeholder="Enter company name" />
             </div>
+            <div class="form-group">
+              <label>Resource types</label>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" name="create_backup" value="1" checked />
+                  Cloud Connect Backup
+                </label>
+              </div>
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" name="create_replication" value="1" />
+                  Cloud Connect Replication
+                </label>
+              </div>
+            </div>
             <button type="submit" class="btn btn-default">Create account</button>
           </form>
         </div>
-        <div id="loading" style="display:none;"><h1>LOADING</h1></div>
-        
+        <div id="loading" style="display:none;">
+          <h1>Please wait...</h1>
+          We are provisioning your user account. It might take a minute or two.
+        </div>
         <div id="result"></div>
       </div>
     </div>
