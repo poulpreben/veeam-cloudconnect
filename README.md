@@ -14,7 +14,7 @@ Make sure you download dependencies using `composer`. This project depends on [G
     git clone https://github.com/poulpreben/veeam-cloudconnect.git
 
 ### 3. Initialize Composer
-    composer init
+    composer install
 
 ## Usage
 Point your web browser to `index.php` and you should see something like this:
