@@ -8,7 +8,7 @@
         }
     ],
     "require": {
-            "guzzlehttp/guzzle": "~6",
+            "guzzlehttp/guzzle": "~5",
             "components/jquery": "2.1.1",
             "twbs/bootstrap": "~3.2"
     }

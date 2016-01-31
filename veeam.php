@@ -16,7 +16,7 @@ if (isset($_POST['action']) && (isset($_POST['create_backup']) || isset($_POST['
   $description = $_POST['full_name'] . " - " . $_POST['company_name'];
   
   $veeam = new Veeam('10.0.0.11', 9399, 'VEEAM-VBR01\\Administrator', '***', $_POST['create_backup'], $_POST['create_replication']);
-  
+
   // Create a user with 10 GB quota and leave them enabled.
-  $veeam->run($username, $description, 10240, TRUE);  
-} 
+  $veeam->run($username, $description, 10240, TRUE);
+}

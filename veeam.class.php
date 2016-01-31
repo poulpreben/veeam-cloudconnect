@@ -59,9 +59,9 @@ class Veeam {
     $this->backup_create = $backup;
     $this->replication_create = $replication;
 
-    $this->session_id = $response->getHeader('X-RestSvcSessionId');
+    $this->session_id = (string) $response->getHeader('X-RestSvcSessionId');
     $this->client->setDefaultOption('headers', array('X-RestSvcSessionId' => $this->session_id));
-    
+
     $this->tenant_password = $this->veeam_generate_password(12);
   }
   
@@ -127,7 +127,7 @@ class Veeam {
 
     foreach ($response->xml()->Ref as $hardware_plan) {
       if (strtolower($hardware_plan_name) == strtolower($hardware_plan['Name'])) {
-        if (array_pop(explode("/",$hardware_plan->Links->Link[0]['Href'])) == $this->backup_server_id) {
+        if (array_pop(explode("/", $hardware_plan->Links->Link[0]['Href'])) == $this->backup_server_id) {
           return (string) $hardware_plan['UID'];
         }
       }
