@@ -21,7 +21,7 @@ class Veeam {
   private $backup_resource;
   private $replication_create;
   private $replication_resource;
-  
+
   // Specify default values
   private $backup_server          = "vbr9.vclass.local";
   private $backup_repository      = "Default Backup Repository";
@@ -64,21 +64,21 @@ class Veeam {
 
     $this->tenant_password = $this->veeam_generate_password(12);
   }
-  
+
   public function __destruct() {
     $this->veeam_delete_session();
   }
-  
+
   /**
   * @param int $length
-  * 
+  *
   * @return string
   */
   private function veeam_generate_password($length = 8) {
     $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     return substr(str_shuffle($chars),0,$length);
   }
-  
+
   /**
    * @param bool $name
    *
@@ -145,6 +145,23 @@ class Veeam {
   }
 
   /**
+   * @param $username
+   *
+   * @return bool
+   */
+  private function veeam_check_username($username) {
+    $response = $this->client->get('cloud/tenants?format=Entity');
+
+    foreach ($response->xml()->CloudTenant as $tenant) {
+      if (strtolower($username) == strtolower($tenant['Name'])) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * @return bool
    */
   private function veeam_delete_session() {
@@ -200,7 +217,7 @@ class Veeam {
         $xml_data->addChild("$key",htmlspecialchars("$value"));
       }
     }
-    
+
     return $xml_data;
   }
 
@@ -214,14 +231,14 @@ class Veeam {
    */
   private function create_xml($root, $type, $href, $content) {
     global $client;
-    
+
     $xml = new SimpleXmlElement('<' . $root . ' />');
     $xml->addAttribute('xmlns', 'http://www.veeam.com/ent/v1.0');
     $xml->addAttribute('xmlns:xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
     $xml->addAttribute('Href', $this->client->getBaseUrl() . "{$href}");
-    
+
     $xml = $this->array_to_xml($content, $xml);
-    
+
     return $xml->asXml();
   }
 
@@ -262,10 +279,10 @@ class Veeam {
     // Wait for tenant create task to finish
     $tenant_task_id = (string) $response->xml()->TaskId;
     $tenant_id = $this->veeam_task_subscriber($tenant_task_id, 'CloudTenant');
-    
+
     // Send output to web frontend
     $result = array('username' => $this->tenant_name, 'password' => $this->tenant_password, 'quota' => $this->tenant_resource_quota);
-    
+
     return json_encode($result);
   }
 
