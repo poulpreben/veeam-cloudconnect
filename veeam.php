@@ -24,5 +24,6 @@ if (isset($_POST['action']) && (isset($_POST['create_backup']) || isset($_POST['
   $veeam = new Veeam($rest_server, $rest_port, $rest_user, $rest_pass, $_POST['create_backup'], $_POST['create_replication']);
 
   // Create a user with 10 GB quota and leave them enabled.
-  $veeam->run($username, $description, 10240, TRUE);
+  // By default CC-R is disabled. Change FALSE to TRUE below to enable, and make sure to configure hardware plan in .class
+  $veeam->run($username, $description, 10240, FALSE);
 }

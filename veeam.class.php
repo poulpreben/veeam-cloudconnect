@@ -23,10 +23,10 @@ class Veeam {
   private $replication_resource;
 
   // Specify default values
-  private $backup_server          = "vbr9.vclass.local";
-  private $backup_repository      = "Default Backup Repository";
+  private $backup_server          = "REPLACE_BACKUP_SERVER";
+  private $backup_repository      = "REPLACE_BACKUP_REPOSITORY";
 
-  private $hardware_plan          = "hwplan-default";
+  private $hardware_plan          = "REPLACE_HARDWARE_PLAN";
   private $lease_expiration       = "+3 months"; // see http://php.net/manual/en/function.strtotime.php
 
   private $tenant_name            = "default-tenant-name"; // This should never happen. If so, you need to sanitize your input better.
